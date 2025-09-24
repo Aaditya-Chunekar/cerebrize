@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: 'OpenSauce';
+  src: url('./assets/fonts/OpenSauceOne-Black.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  font-family: 'OpenSauce', sans-serif;
+  background: #edfeff;
+  color: #2e2e2e;
+}
+
+.cerebrize-container {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+/* Background grid lines */
+.cerebrize-container::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(0,0,0,0.08) 2px, transparent 1px),
+    linear-gradient(to bottom, rgba(0,0,0,0.08) 2px, transparent 1px);
+  background-size: 25% 75%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Grid square styles */
+.grid-square {
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  min-height: 200px;
+  backdrop-filter: blur(10px);
+}
+
+.grid-square:hover {
+  background: rgba(0, 0, 0, 0.1);
+  border-color: rgba(0, 0, 0, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
