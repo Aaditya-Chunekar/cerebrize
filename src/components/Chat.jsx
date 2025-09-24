@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import ReactMarkdown from 'react-markdown';
 
 export default function Chat() {
   const [mode, setMode] = useState("Gain"); // Default
@@ -9,9 +10,19 @@ export default function Chat() {
   const [isSatisfied, setIsSatisfied] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [sessionComplete, setSessionComplete] = useState(false);
+  const [error, setError] = useState(null);
+  const [retryAfter, setRetryAfter] = useState(null);
 
   const sendMessage = async () => {
     if (!input || isLoading) return;
+    
+    // If session is complete (either mode), automatically reset for new session
+    if (sessionComplete || (mode === "Think" && isSatisfied) || (mode === "Gain" && currentPhase === "answering")) {
+      setIsSatisfied(false);
+      setSessionComplete(false);
+      setCurrentPhase("questioning");
+    }
     
     setIsLoading(true);
     const userMsg = { sender: "user", text: input };
@@ -26,11 +37,38 @@ export default function Chat() {
     };
 
     try {
+      setError(null); // Clear any previous errors
       const res = await fetch("http://localhost:8000/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),
       });
+      
+      if (!res.ok) {
+        if (res.status === 429) {
+          // Rate limit exceeded
+          const retryAfterSeconds = res.headers.get('Retry-After') || 60;
+          setRetryAfter(parseInt(retryAfterSeconds));
+          setError(`API limit exceeded. Please try again in ${retryAfterSeconds} seconds.`);
+          
+          // Start countdown timer
+          const timer = setInterval(() => {
+            setRetryAfter((prev) => {
+              if (prev <= 1) {
+                clearInterval(timer);
+                setError(null);
+                return null;
+              }
+              return prev - 1;
+            });
+          }, 1000);
+          
+          return;
+        } else {
+          throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        }
+      }
+      
       const data = await res.json();
 
       // Update session state
@@ -42,13 +80,32 @@ export default function Chat() {
       }
       if (data.satisfied !== undefined) {
         setIsSatisfied(data.satisfied);
+        // If Think session restarted (was satisfied but now isn't), reset session complete
+        if (mode === "Think" && !data.satisfied && sessionComplete) {
+          setSessionComplete(false);
+        }
       }
 
-      setMessages((prev) => [...prev, { sender: "bot", text: data.reply }]);
+      // Mark as session complete for final answers
+      const isSessionEnd = (mode === "Gain" && data.phase === "answering") || 
+                          (mode === "Think" && data.satisfied);
+      
+      setMessages((prev) => [...prev, { 
+        sender: "bot", 
+        text: data.reply, 
+        isSessionEnd,
+        sessionMode: mode
+      }]);
+      
+      if (isSessionEnd) {
+        setSessionComplete(true);
+      }
+      
       setCurrentQuestionIndex(prev => prev + 1);
       setInput("");
     } catch (error) {
       console.error("Error sending message:", error);
+      setError(`Failed to send message: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -60,6 +117,23 @@ export default function Chat() {
     setCurrentPhase("questioning");
     setIsSatisfied(false);
     setCurrentQuestionIndex(0);
+    setSessionComplete(false);
+    setError(null);
+    setRetryAfter(null);
+  };
+  
+  const startNewChat = () => {
+    resetConversation();
+  };
+  
+  const switchMode = (newMode) => {
+    if (newMode !== mode) {
+      setMode(newMode);
+      // Don't reset conversation - allow mode switching within same chat
+      setCurrentPhase("questioning");
+      setIsSatisfied(false);
+      setSessionComplete(false);
+    }
   };
 
   const getCurrentQuestion = () => {
@@ -86,8 +160,8 @@ export default function Chat() {
   const getInputPlaceholder = () => {
     if (mode === "Gain" && currentPhase === "questioning") {
       return "Answer my questions or type 'ready for answer' when done...";
-    } else if (mode === "Think" && isSatisfied) {
-      return "Start a new thinking session...";
+    } else if ((mode === "Think" && isSatisfied) || sessionComplete) {
+      return `Ask a new question to start another ${mode.toLowerCase()} session...`;
     } else {
       return "Share your thoughts...";
     }
@@ -99,166 +173,145 @@ export default function Chat() {
   return (
     <div className="chat-fullscreen">
       {/* Header Bar */}
-      <div className="chat-topbar">
-        <div className="chat-brand">
+      <div className="chat-header">
+        <div className="header-left">
           <span className="brand-text">cerebrize</span>
-          {/* <img src="src/assets/icons/logo.png" className="w-9 h-9" alt="Logo" /> */}
         </div>
-        <div>
-          <img src="src/assets/icons/logo.png" className="w-9 h-9" alt="Account PFP" />
+        <div className="header-center">
+          {/* Mode Toggle Switch */}
+          <div className="mode-toggle">
+            <div className={`toggle-option ${mode === 'Gain' ? 'active' : ''}`} onClick={() => switchMode('Gain')}>
+              Gain
+            </div>
+            <div className={`toggle-option ${mode === 'Think' ? 'active' : ''}`} onClick={() => switchMode('Think')}>
+              Think
+            </div>
+            <div className={`toggle-slider ${mode === 'Think' ? 'right' : 'left'}`}></div>
+          </div>
+        </div>
+        <div className="header-right">
+          <button onClick={startNewChat} className="new-chat-btn">
+            + New Conversation
+          </button>
         </div>
       </div>
 
-      {/* Progress Indicator */}
-      {messages.length > 0 && (
-        <div className="progress-bar">
-          <div className="progress-info">
-            <span className="mode-badge">{mode}</span>
-            <span className="question-counter">
-              {mode === "Gain" && currentPhase === "questioning" && `Question ${Math.ceil(userAnswers.length + 1)}`}
-              {mode === "Gain" && currentPhase === "answering" && "Final Answer"}
-              {mode === "Think" && !isSatisfied && `Exploration ${userAnswers.length + 1}`}
-              {mode === "Think" && isSatisfied && "Complete"}
-            </span>
-          </div>
-          <div className="status-text">{getModeDescription()}</div>
-        </div>
-      )}
-
-      {/* Main Content Area */}
-      <div className="chat-main">
+      {/* Messages Container */}
+      <div className="messages-container">
         {messages.length === 0 ? (
-          // Initial State
-          <div className="welcome-screen">
-            <div className="welcome-content">
-              <h1 className="welcome-title">Welcome to Cerebrize</h1>
-              
-              {/* Mode Toggle Switch */}
-              <div className="mode-toggle-container">
-                <div className="mode-toggle">
-                  <div className={`toggle-option ${mode === 'Gain' ? 'active' : ''}`} onClick={() => setMode('Gain')}>
-                    Gain
-                  </div>
-                  <div className={`toggle-option ${mode === 'Think' ? 'active' : ''}`} onClick={() => setMode('Think')}>
-                    Think
-                  </div>
-                  <div className={`toggle-slider ${mode === 'Think' ? 'right' : 'left'}`}></div>
-                </div>
-              </div>
-              
-              <p className="welcome-subtitle">
+          <div className="empty-state">
+            <div className="empty-content">
+              <h2>Welcome to Cerebrize</h2>
+              <p>
                 {mode === "Gain" 
                   ? "I'll ask clarifying questions first, then provide a comprehensive answer"
                   : "Let's explore your thoughts together through guided questions"
                 }
               </p>
-              <div className="start-section">
-                <input
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                  placeholder={mode === "Gain" ? "What would you like help with?" : "What's on your mind?"}
-                  className="start-input"
-                  disabled={isLoading}
-                />
-                <button onClick={sendMessage} disabled={!input.trim() || isLoading} className="start-button">
-                  {isLoading ? "Starting..." : "Begin"}
-                </button>
-              </div>
             </div>
           </div>
         ) : (
-          // Question/Answer Interface
-          <div className="question-interface">
-            {/* Mode Toggle in Chat */}
-            <div className="chat-mode-toggle">
-              <div className="mode-toggle">
-                <div className={`toggle-option ${mode === 'Gain' ? 'active' : ''}`} onClick={() => {setMode('Gain'); resetConversation();}}>
-                  Gain
-                </div>
-                <div className={`toggle-option ${mode === 'Think' ? 'active' : ''}`} onClick={() => {setMode('Think'); resetConversation();}}>
-                  Think
-                </div>
-                <div className={`toggle-slider ${mode === 'Think' ? 'right' : 'left'}`}></div>
-              </div>
-            </div>
-            
-            {/* Current Question Card */}
-            {currentQuestion && (
-              <div className={`question-card ${mode === 'Gain' && currentPhase === 'answering' ? 'answer-mode' : ''}`}>
-                <div className="question-header">
-                  <span className="cerebrize-avatar">🧠</span>
-                  <span className="cerebrize-name">Cerebrize</span>
-                  {mode === 'Gain' && currentPhase === 'answering' && (
-                    <span className="answer-badge">Final Answer</span>
+          <div className="messages-list">
+            {messages.map((message, index) => (
+              <div key={index} className={`message-bubble ${
+                message.sender === 'user' ? 'user-message' : 
+                message.isSessionEnd ? `bot-message session-end ${message.sessionMode.toLowerCase()}-mode` :
+                'bot-message'
+              }`}>
+                {message.sender === 'bot' && (
+                  <div className="bot-avatar">
+                    <img src="src/assets/icons/logo.png" alt="Brain Icon" className="brain-icon" />
+                  </div>
+                )}
+                <div className="message-content">
+                  <div className="message-text">
+                    {message.sender === 'bot' ? (
+                      <ReactMarkdown>{message.text}</ReactMarkdown>
+                    ) : (
+                      message.text
+                    )}
+                  </div>
+                  {message.isSessionEnd && (
+                    <div className="session-badge">
+                      {message.sessionMode === 'Gain' ? 'Final Answer' : 'Session Complete'}
+                    </div>
                   )}
                 </div>
-                <div className="question-content">
-                  <p className={`question-text ${mode === 'Gain' && currentPhase === 'answering' ? 'answer-text' : ''}`}>
-                    {currentQuestion.text}
-                  </p>
+              </div>
+            ))}
+            {isLoading && (
+              <div className="message-bubble bot-message">
+                <div className="bot-avatar">
+                  <img src="src/assets/icons/logo.png" alt="Brain Icon" className="brain-icon" />
+                </div>
+                <div className="message-content">
+                  <div className="typing-indicator">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </div>
                 </div>
               </div>
             )}
-
-            {/* Answer Input */}
-            <div className="answer-section">
-              <div className="input-container">
-                <input
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                  placeholder={getInputPlaceholder()}
-                  className="answer-input"
-                  disabled={isLoading || (mode === "Think" && isSatisfied)}
-                />
-                <button 
-                  onClick={sendMessage} 
-                  disabled={!input.trim() || isLoading || (mode === "Think" && isSatisfied)}
-                  className="send-button"
-                >
-                  {isLoading ? "..." : "Send"}
-                </button>
-              </div>
-
-              {/* Quick Actions */}
-              <div className="quick-actions-row">
-                {mode === "Gain" && currentPhase === "questioning" && !isLoading && (
-                  <button 
-                    onClick={() => setInput("That's all the information I have. Please provide your answer now.")}
-                    className="quick-action-btn"
-                  >
-                    Ready for Answer
-                  </button>
-                )}
-
-                {mode === "Think" && !isSatisfied && messages.length > 2 && !isLoading && (
-                  <button 
-                    onClick={() => setInput("I'm satisfied with our exploration. Thank you.")}
-                    className="quick-action-btn"
-                  >
-                    I'm Satisfied
-                  </button>
-                )}
-              </div>
-            </div>
           </div>
         )}
+      </div>
 
-        {/* Previous Answers Summary (Collapsible) */}
-        {userAnswers.length > 0 && (
-          <div className="answers-summary">
-            <details className="summary-toggle">
-              <summary>Previous Answers ({userAnswers.length})</summary>
-              <div className="answers-list">
-                {userAnswers.map((answer, i) => (
-                  <div key={i} className="answer-item">
-                    <span className="answer-number">{i + 1}.</span>
-                    <span className="answer-text">{answer.text}</span>
-                  </div>
-                ))}
-              </div>
-            </details>
+      {/* Error Message */}
+      {error && (
+        <div className="error-banner">
+          <div className="error-content">
+            <span className="error-icon">⚠️</span>
+            <span className="error-text">{error}</span>
+            {retryAfter && (
+              <span className="retry-countdown">Retry in {retryAfter}s</span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Input Section */}
+      <div className="input-section">
+        <div className="input-container">
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+            placeholder={messages.length === 0 ? 
+              (mode === "Gain" ? "What would you like help with?" : "What's on your mind?") :
+              getInputPlaceholder()
+            }
+            className="message-input"
+            disabled={isLoading}
+          />
+          <button 
+            onClick={sendMessage} 
+            disabled={!input.trim() || isLoading || error}
+            className="send-btn"
+          >
+            {isLoading ? "..." : "↑"}
+          </button>
+        </div>
+        
+        {/* Quick Actions */}
+        {messages.length > 0 && (
+          <div className="quick-actions">
+            {mode === "Gain" && currentPhase === "questioning" && !isLoading && (
+              <button 
+                onClick={() => setInput("That's all the information I have. Please provide your answer now.")}
+                className="quick-btn"
+              >
+                Ready for Answer
+              </button>
+            )}
+            {mode === "Think" && !isSatisfied && messages.length > 2 && !isLoading && (
+              <button 
+                onClick={() => setInput("I'm satisfied with our exploration. Thank you.")}
+                className="quick-btn"
+              >
+                I'm Satisfied
+              </button>
+            )}
           </div>
         )}
       </div>

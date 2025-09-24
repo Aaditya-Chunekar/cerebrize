@@ -78,6 +78,13 @@ async def chat(req: ChatRequest):
 async def handle_gain_mode(user_message: str, session: Dict) -> str:
     """Handle Gain mode: Ask questions first, then provide comprehensive answer"""
     
+    # If user completed a Gain session and is asking a new question, reset the session
+    if session.get("gain_phase") == "answering" and len(user_message.strip()) > 15:
+        # Check if it's a new topic/question (not just a follow-up)
+        question_phrases = ["what", "how", "why", "can", "should", "would", "could", "tell me", "help me", "explain"]
+        if any(phrase in user_message.lower() for phrase in question_phrases):
+            session["gain_phase"] = "questioning"
+    
     # Check if user is indicating they're done with questions
     done_indicators = ["that's all", "no more", "ready for answer", "give me the answer", 
                       "answer now", "i'm done", "proceed", "continue", "go ahead"]
@@ -94,18 +101,20 @@ async def handle_gain_mode(user_message: str, session: Dict) -> str:
         You are Cerebrize in Gain mode - QUESTIONING PHASE.
         
         Your role:
-        1. Ask 1-2 specific, targeted clarifying questions to understand the user's request better
+        1. Ask ONE short, specific clarifying question to understand the user's request better
         2. Focus on reducing ambiguity and gathering essential details YOU need
         3. Ask about context, constraints, goals, or specific requirements
-        4. Be concise but thorough in your questions
+        4. Keep questions VERY SHORT - maximum 1-2 sentences
         5. If you have enough information after a few exchanges, you can proceed to answer
+        
+        IMPORTANT: Your question must be SHORT and DIRECT. No long explanations.
         
         Conversation so far:
         {conversation_context}
         
         Current user message: {user_message}
         
-        Ask your clarifying questions now. If you feel you have sufficient information, you can say "I have enough information to help you" and proceed with the answer.
+        Ask ONE short clarifying question now (1-2 sentences max). If you have sufficient information, say "I have enough information to help you" and proceed with the answer.
         """
     else:  # answering phase
         system_prompt = f"""
@@ -120,7 +129,7 @@ async def handle_gain_mode(user_message: str, session: Dict) -> str:
         """
     
     response = client.models.generate_content(
-        model="gemini-1.5-flash",
+        model="gemini-2.5-flash-lite",
         contents=[system_prompt]
     )
     
@@ -136,13 +145,24 @@ async def handle_think_mode(user_message: str, session: Dict) -> str:
     
     if any(indicator in user_message.lower() for indicator in satisfied_indicators):
         session["think_satisfied"] = True
-        return "Great! I'm glad I could help you think through this. Feel free to start a new conversation whenever you need to explore another topic."
+        return "Great! I'm glad I could help you think through this. Feel free to ask a new question to start another thinking session, or start a new conversation to explore a different topic."
+    
+    # If user was satisfied but is asking a new substantial question, restart the think session
+    if session.get("think_satisfied", False) and len(user_message.strip()) > 15:
+        # Check if it's not just a continuation response but a new topic/question
+        continuation_phrases = ["what", "how", "why", "can", "should", "would", "could", "tell me", "help me"]
+        if any(phrase in user_message.lower() for phrase in continuation_phrases):
+            # Reset think session for new topic
+            session["think_satisfied"] = False
+            session["questions_asked"] = 0
     
     conversation_context = "\n".join([
         f"{sender}: {text}" for sender, text in [get_message_text(msg) for msg in session["conversation_history"]]
     ])
     
-    session["questions_asked"] = session.get("questions_asked", 0) + 1
+    # Only increment if we're actively in a thinking session
+    if not session.get("think_satisfied", False):
+        session["questions_asked"] = session.get("questions_asked", 0) + 1
     
     if session["think_satisfied"]:
         return "I'm here when you're ready to explore something new! What would you like to think about?"
@@ -151,11 +171,13 @@ async def handle_think_mode(user_message: str, session: Dict) -> str:
     You are Cerebrize in Think mode.
     
     Your role:
-    1. Ask thought-provoking, reflective questions to help the user think deeper
+    1. Ask ONE short, thought-provoking question to help the user think deeper
     2. Encourage exploration of assumptions, alternatives, and different perspectives
     3. Help them discover insights on their own
     4. Ask about underlying motivations, potential consequences, or different angles
     5. Be a thinking partner, not an answer provider
+    
+    IMPORTANT: Your question must be SHORT and DIRECT. Maximum 1-2 sentences.
     
     Questions asked so far: {session['questions_asked']}
     
@@ -164,7 +186,7 @@ async def handle_think_mode(user_message: str, session: Dict) -> str:
     
     Current user message: {user_message}
     
-    Ask 1-2 thought-provoking questions that will help them think deeper about their situation. 
+    Ask ONE short, thought-provoking question (1-2 sentences max) that will help them think deeper about their situation. 
     Focus on helping them discover their own insights.
     """
     

@@ -65,14 +65,19 @@ function Home() {
 
         {/* Grid Square 4 - Main Content */}
         <div className="grid-square group cursor-pointer col-span-2">
-          <div className="h-full w-full p-8 flex flex-col justify-center">
-            <div className="text-[60px] font-bold leading-none mb-6">
-              <span className="instrument-serif-regular-italic m-3">meet</span><span className="border-2 rounded-[40px] px-4 py-2">cerebrize</span>
+          <div className="h-full w-full p-8 flex items-center justify-between">
+            <div className="flex-1 pr-8">
+              <div className="text-[60px] font-bold leading-none mb-6">
+                <span className="instrument-serif-regular-italic m-3">meet</span><span className="border-2 rounded-[40px] px-4 py-2">cerebrize</span>
+              </div>
+              <p className="text-lg leading-relaxed max-w-lg">Cerebrize redefines how you work with AI,
+                 empowering you to think <span className='instrument-serif-regular-italic'>critically</span>, stay <span className='instrument-serif-regular-italic'>creative</span>, and maintain <span className='instrument-serif-regular-italic'>focus</span>, unlocking your
+                <span className="text-[#0066ff] font-bold"> full potential.</span>
+              </p>
             </div>
-            <p className="text-lg leading-relaxed max-w-lg">Cerebrize redefines how you work with AI,
-               empowering you to think <span className='instrument-serif-regular-italic'>critically</span>, stay <span className='instrument-serif-regular-italic'>creative</span>, and maintain <span className='instrument-serif-regular-italic'>focus</span>, unlocking your
-              <span className="text-[#0066ff] font-bold"> full potential.</span>
-            </p>
+            <div className="flex-shrink-0">
+              <img src='src/assets/icons/logo.png' alt='Brain Icon' className='brain-icon w-50 h-50'/>
+            </div>
           </div>
         </div>
 
