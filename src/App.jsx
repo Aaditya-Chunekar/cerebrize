@@ -2,6 +2,7 @@ import './App.css';
 import logoImg from './assets/icons/logo.png';
 import TipTapTest from "./components/TipTapTest";
 import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
+import Chat from "./components/Chat";
 
 {/* <Routes>
   <Route path="/" element={<Home />} />
@@ -12,7 +13,7 @@ function App() {  return (
     <Router>
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/editor" element={<TipTapTest />} />
+        <Route path="/editor" element={<Chat />} />
       </Routes>
     </Router>
   );}
@@ -76,14 +77,14 @@ function Home() {
         </div>
 
         {/* Grid Square 5 */}
-        {/* <Link to="/editor" style={{ color: 'black', textDecoration: 'none' }} className="grid-square group cursor-pointer"> */}
+        <Link to="/editor" style={{ color: 'black', textDecoration: 'none' }} className="grid-square group cursor-pointer">
           <div className="h-full w-full p-6 flex items-center justify-center">
             <div className="text-center">
               <h3 className="text-2xl font-bold mb-2">Explore</h3>
               <p className="text-sm opacity-70">Start your journey</p>
             </div>
           </div>
-        {/* </Link> */}
+        </Link>
       </div>
       
     </div>
