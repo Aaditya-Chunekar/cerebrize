@@ -47,7 +47,7 @@ export default function Dashboard() {
       <div className="chat-header bg-gradient-to-r from-indigo-600 to-purple-600">
         <div className="header-left">
           <span className="brand-text text-white flex items-center">
-            📊 Holistic Dashboard
+            Holistic Dashboard
           </span>
         </div>
         <div className="header-center">
@@ -101,7 +101,7 @@ export default function Dashboard() {
             <div className="bg-white rounded-2xl p-6 shadow-lg">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-gray-800 flex items-center">
-                  🧠 Intellectual Development
+                  Intellectual Development
                 </h2>
                 <Link to="/editor" className="text-indigo-600 hover:text-indigo-800 font-semibold">
                   Continue Learning →
@@ -150,7 +150,7 @@ export default function Dashboard() {
             <div className="bg-white rounded-2xl p-6 shadow-lg">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-gray-800 flex items-center">
-                  💪 Physical Development
+                  Physical Development
                 </h2>
                 <Link to="/physical" className="text-orange-600 hover:text-orange-800 font-semibold">
                   View Activities →

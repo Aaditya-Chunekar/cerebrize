@@ -65,7 +65,7 @@ export default function Physical() {
       <div className="chat-fullscreen bg-gradient-to-br from-orange-50 to-red-50">
         <div className="flex items-center justify-center h-full">
           <div className="text-center">
-            <div className="animate-spin text-6xl mb-4">🏃‍♂️</div>
+            {/* <div className="animate-spin text-6xl mb-4"></div> */}
             <h2 className="text-2xl font-bold text-gray-800 mb-2">Connecting to Strava...</h2>
             <p className="text-gray-600">Syncing your physical betterment data</p>
           </div>
@@ -80,7 +80,7 @@ export default function Physical() {
       <div className="chat-header bg-gradient-to-r from-orange-500 to-red-500">
         <div className="header-left">
           <span className="brand-text text-white flex items-center">
-            🏃‍♂️ Physical Betterment
+            Physical Betterment
           </span>
         </div>
         <div className="header-center">
@@ -162,7 +162,7 @@ export default function Physical() {
               {/* Weekly Goals */}
               <div className="bg-white rounded-xl p-6 shadow-lg">
                 <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                  🎯 Weekly Goals
+                  Weekly Goals
                 </h3>
                 <div className="space-y-4">
                   <div>
@@ -228,7 +228,7 @@ export default function Physical() {
               {/* Cognitive Benefits */}
               <div className="bg-gradient-to-br from-purple-100 to-blue-100 rounded-xl p-6">
                 <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                  🧠 Cognitive Benefits
+                  Cognitive Benefits
                 </h3>
                 <div className="space-y-3 text-sm">
                   <div className="flex items-center space-x-2">

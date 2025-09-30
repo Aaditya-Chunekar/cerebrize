@@ -62,7 +62,7 @@ function Home() {
             <div className="h-full w-full p-8 flex items-center justify-center">
               <div className="text-center">
                 {/* <div className="text-6xl mb-4 animate-bounce">🚀</div> */}
-                <h2 className="text-4xl font-bold mb-4 bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">Begin Conversation</h2>
+                <h2 className="text-4xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Begin Conversation</h2>
                 <p className="text-lg text-gray-600 leading-relaxed max-w-2xl">Start your intellectual enhancement journey with AI-powered Think & Gain modes for deeper understanding and creative problem-solving</p>
                 <div className="mt-6 flex justify-center space-x-4">
                   <span className="px-4 py-2 bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800 rounded-full text-sm font-semibold">Think Mode</span>
